@@ -34,6 +34,7 @@ from .notifications_routes import router as notifications_router
 from .notion_add_connector_route import router as notion_add_connector_router
 from .podcasts_routes import router as podcasts_router
 from .public_chat_routes import router as public_chat_router
+from .simple_chat_routes import router as simple_chat_router
 from .rbac_routes import router as rbac_router
 from .reports_routes import router as reports_router
 from .sandbox_routes import router as sandbox_router
@@ -79,5 +80,6 @@ router.include_router(surfsense_docs_router)  # Surfsense documentation for cita
 router.include_router(notifications_router)  # Notifications with Electric SQL sync
 router.include_router(composio_router)  # Composio OAuth and toolkit management
 router.include_router(public_chat_router)  # Public chat sharing and cloning
+router.include_router(simple_chat_router)  # Simple non-streaming chat endpoint
 router.include_router(incentive_tasks_router)  # Incentive tasks for earning free pages
 router.include_router(youtube_router)  # YouTube playlist resolution
