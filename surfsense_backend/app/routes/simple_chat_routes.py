@@ -53,7 +53,6 @@ _DISABLED_TOOLS: list[str] = [
     "generate_image",
     "scrape_webpage",
     "search_surfsense_docs",
-    "search_knowledge_base",
 ]
 
 
