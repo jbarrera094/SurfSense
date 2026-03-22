@@ -26,10 +26,13 @@ from sqlalchemy.future import select
 
 from app.db import (
     ChatVisibility,
+    NewChatMessage,
+    NewChatMessageRole,
     NewChatThread,
     Permission,
     SearchSpace,
     User,
+    async_session_maker,
     get_async_session,
 )
 from app.routes.new_chat_routes import check_thread_access
@@ -125,7 +128,7 @@ async def simple_chat(
             thread = NewChatThread(
                 title="New Chat",
                 archived=False,
-                visibility=ChatVisibility.PRIVATE,
+                visibility=ChatVisibility.SEARCH_SPACE,
                 search_space_id=search_space_id,
                 created_by_id=user.id,
                 updated_at=datetime.now(UTC),
@@ -148,6 +151,21 @@ async def simple_chat(
         llm_config_id = (
             search_space.agent_llm_id if search_space.agent_llm_id is not None else -1
         )
+
+        # Save the user message before releasing the session.
+        content_parts: list[dict] = [{"type": "text", "text": request.user_query}]
+        if mentioned_document_ids:
+            for doc_id in mentioned_document_ids:
+                content_parts.append({"type": "document_mention", "document_id": doc_id})
+
+        user_msg = NewChatMessage(
+            thread_id=chat_id,
+            role=NewChatMessageRole.USER,
+            content=content_parts,
+            author_id=user.id,
+        )
+        session.add(user_msg)
+        thread.updated_at = datetime.now(UTC)
 
         # Release the DB session before consuming the streaming generator,
         # same pattern as the existing /new_chat endpoint.
@@ -176,6 +194,24 @@ async def simple_chat(
                             ai_text += event.get("delta", "")
                     except (json.JSONDecodeError, TypeError):
                         pass
+
+        # Persist the AI response message using a fresh session (the original
+        # session was closed before streaming began).
+        async with async_session_maker() as ai_session:
+            ai_msg = NewChatMessage(
+                thread_id=chat_id,
+                role=NewChatMessageRole.ASSISTANT,
+                content=[{"type": "text", "text": ai_text}],
+                author_id=None,
+            )
+            ai_session.add(ai_msg)
+            thread_result = await ai_session.execute(
+                select(NewChatThread).filter(NewChatThread.id == chat_id)
+            )
+            updated_thread = thread_result.scalars().first()
+            if updated_thread:
+                updated_thread.updated_at = datetime.now(UTC)
+            await ai_session.commit()
 
         return SimpleChatResponse(ai_response=ai_text, chat_id=chat_id)
 
