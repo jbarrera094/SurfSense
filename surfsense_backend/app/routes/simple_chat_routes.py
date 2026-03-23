@@ -45,9 +45,6 @@ _logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Tools that are always disabled for the simple-chat endpoint.
-# TODO: Fix when I don't send chat_id then the endpoint create one chat from scrash, right? 
-# but this new chat doesn't take into consideration the document ID I passed to it. So help me to fixed that
-# temporal removed search_knowledge_base tool
 _DISABLED_TOOLS: list[str] = [
     "generate_podcast",
     "generate_report",
@@ -55,7 +52,8 @@ _DISABLED_TOOLS: list[str] = [
     "display_image",
     "generate_image",
     "scrape_webpage",
-    "search_surfsense_docs"
+    "search_surfsense_docs",
+    "search_knowledge_base",
 ]
 
 
