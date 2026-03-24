@@ -156,7 +156,7 @@ async def simple_chat(
         content_parts: list[dict] = [{"type": "text", "text": request.user_query}]
         if mentioned_document_ids:
             for doc_id in mentioned_document_ids:
-                content_parts.append({"type": "document_mention", "document_id": doc_id})
+                content_parts.append({"type": "mentioned-documents", "document_id": doc_id})
 
         user_msg = NewChatMessage(
             thread_id=chat_id,
