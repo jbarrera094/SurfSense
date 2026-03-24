@@ -26,6 +26,7 @@ from sqlalchemy.future import select
 
 from app.db import (
     ChatVisibility,
+    Document,
     NewChatMessage,
     NewChatMessageRole,
     NewChatThread,
@@ -153,10 +154,37 @@ async def simple_chat(
         )
 
         # Save the user message before releasing the session.
+        # mentioned-documents shape must match the main chat UI (single block, documents[]).
         content_parts: list[dict] = [{"type": "text", "text": request.user_query}]
         if mentioned_document_ids:
+            docs_result = await session.execute(
+                select(Document).filter(
+                    Document.id.in_(mentioned_document_ids),
+                    Document.search_space_id == search_space_id,
+                )
+            )
+            id_to_doc = {d.id: d for d in docs_result.scalars().all()}
+            seen_ids: set[int] = set()
+            ordered_docs: list[Document] = []
             for doc_id in mentioned_document_ids:
-                content_parts.append({"type": "mentioned-documents", "document_id": doc_id})
+                if doc_id in seen_ids or doc_id not in id_to_doc:
+                    continue
+                seen_ids.add(doc_id)
+                ordered_docs.append(id_to_doc[doc_id])
+            if ordered_docs:
+                content_parts.append(
+                    {
+                        "type": "mentioned-documents",
+                        "documents": [
+                            {
+                                "id": d.id,
+                                "title": d.title,
+                                "document_type": d.document_type.value,
+                            }
+                            for d in ordered_docs
+                        ],
+                    }
+                )
 
         user_msg = NewChatMessage(
             thread_id=chat_id,
